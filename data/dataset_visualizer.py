@@ -113,3 +113,70 @@ def visualize_dataset(dataset, output_dir, num_samples=500):
         pil_image.save(output_path)
         
         print(f"Saved image with labels {label_text} to {output_path}")
+
+def plot_dataset_samples_singlelabel(save_dir, dataloader):
+    # 全データを収集
+    all_images = []
+    all_labels = []
+    all_names = []
+    
+    for images, img_names, labels in dataloader:
+        all_images.extend(images)
+        all_labels.extend(labels)
+        all_names.extend(img_names)
+    
+    # データをラベルでソート
+    combined = list(zip(all_images, all_labels, all_names))
+    combined.sort(key=lambda x: int(x[1]) if not isinstance(x[1], torch.Tensor) else int(x[1].item()))
+    
+    # ソートされたデータを分解
+    sorted_images = [item[0] for item in combined]
+    sorted_labels = [item[1] for item in combined]
+    sorted_names = [item[2] for item in combined]
+    
+    # 20x20のグリッドを作成
+    grid_size = 20
+    total_images = min(grid_size * grid_size, len(sorted_images))
+    
+    fig, axes = plt.subplots(grid_size, grid_size, figsize=(40, 40))
+    plt.subplots_adjust(hspace=0.3, wspace=0.3)
+    
+    for i in range(total_images):
+        row = i // grid_size
+        col = i % grid_size
+        img = sorted_images[i]
+        label = int(sorted_labels[i]) if not isinstance(sorted_labels[i], torch.Tensor) else int(sorted_labels[i].item())
+        ax = axes[row, col]
+        img_np = img.permute(1, 2, 0).numpy()  # CHW to HWC
+        ax.imshow(img_np)
+        ax.set_title(f"Label: {label}", fontsize=8)
+        ax.axis('off')
+    
+    # 残りの空のサブプロットを非表示に
+    for i in range(total_images, grid_size * grid_size):
+        row = i // grid_size
+        col = i % grid_size
+        axes[row, col].axis('off')
+    
+    save_path = Path(save_dir) / 'dataset_samples_grid_singlelabel.png'
+    plt.savefig(save_path, bbox_inches='tight', dpi=300)
+    plt.close()
+    
+    print(f"画像をグリッド形式で保存しました: {save_path}")
+
+def show_dataset_stats_singlelabel(dataloader):
+    # データセットの総数
+    total_samples = len(dataloader.dataset)
+    # ラベルの分布を計算
+    all_labels = []
+    for batch, (images, _, labels) in enumerate(dataloader):
+        if isinstance(labels, torch.Tensor):
+            all_labels.extend(labels.cpu().tolist())
+        else:
+            all_labels.extend(labels)
+    # クラスごとのサンプル数をカウント
+    class_samples = Counter(all_labels)
+    print(f"総サンプル数: {total_samples}")
+    print("クラスごとのサンプル数:")
+    for class_label, count in sorted(class_samples.items()):
+        print(f"クラス {class_label}: {count}")

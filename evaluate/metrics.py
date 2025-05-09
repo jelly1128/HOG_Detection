@@ -1,13 +1,20 @@
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, multilabel_confusion_matrix
 import numpy as np
-from labeling.label_converter import HardMultiLabelResult, SingleLabelResult
+from labeling.label_converter import HardMultiLabelResult
+from labeling.result_types import SingleLabelResult
 import pandas as pd
 from pathlib import Path
 
 class ClassificationMetricsCalculator:
-    def __init__(self, num_classes: int = 15):
+    def __init__(self, num_classes: int = 15, mode: str = "multitask"):
+        """
+        Args:
+            num_classes (int or None): クラス数。Noneの場合はmodeに応じて自動設定。
+            mode (str): "multitask"（マルチラベル/マルチタスク）または "single_label"（シングルラベル）
+        """
         self.num_classes = num_classes
-    
+        self.mode = mode
+        
     def calculate_metrics_multi_label_per_class(self, y_true, y_pred):
         """
         各クラスごとのTP, FP, TN, FNを計算
@@ -72,7 +79,12 @@ class ClassificationMetricsCalculator:
         y_pred = np.array(y_pred)
         
         # クラス数×クラス数の混同行列を計算
-        confusion_matrix = np.zeros((self.num_classes, self.num_classes), dtype=int)
+        # modeに応じてクラス数を設定
+        if self.mode == "multitask":
+            n_classes = 6  # 主クラスの数
+        elif self.mode == "single_label":
+            n_classes = 2
+        confusion_matrix = np.zeros((n_classes, n_classes), dtype=int)
         
         # 混同行列を作成
         for t, p in zip(y_true, y_pred):
@@ -84,7 +96,7 @@ class ClassificationMetricsCalculator:
         accuracies = []
         confusion_matrices = []
         
-        for class_idx in range(self.num_classes):
+        for class_idx in range(n_classes):
             tp = confusion_matrix[class_idx, class_idx]
             fp = np.sum(confusion_matrix[:, class_idx]) - tp
             fn = np.sum(confusion_matrix[class_idx, :]) - tp
@@ -100,7 +112,7 @@ class ClassificationMetricsCalculator:
             f1_scores.append(f1_score)
             accuracies.append(accuracy)
             confusion_matrices.append([[tp, fp], [fn, tn]])
-        
+            
         return np.array(precisions), np.array(recalls), np.array(f1_scores), np.array(accuracies), np.array(confusion_matrices)
             
 
@@ -161,23 +173,12 @@ class ClassificationMetricsCalculator:
         y_true = np.array(y_true)
         y_pred = np.array(y_pred)
 
-        # 入力データが空でないことを確認
-        if len(y_true) == 0 or len(y_pred) == 0:
-            raise ValueError("入力データが空です。評価を行うためにはデータが必要です。")
-
         # クラスごとの混同行列を計算
-        per_class_confusion_matrices = []
-        for class_idx in range(self.num_classes):
-            tp = np.sum((y_true[:, class_idx] == 1) & (y_pred[:, class_idx] == 1))
-            fp = np.sum((y_true[:, class_idx] == 0) & (y_pred[:, class_idx] == 1))
-            fn = np.sum((y_true[:, class_idx] == 1) & (y_pred[:, class_idx] == 0))
-            tn = np.sum((y_true[:, class_idx] == 0) & (y_pred[:, class_idx] == 0))
-            per_class_confusion_matrices.append(np.array([[tn, fp], [fn, tp]]))
+        per_class_confusion_matrices = multilabel_confusion_matrix(y_true, y_pred)
         
-        per_class_confusion_matrices = np.array(per_class_confusion_matrices)
-        
-        # クラス数×クラス数の混同行列を計算（整数型で初期化）
-        class_confusion_matrix = np.zeros((self.num_classes, self.num_classes), dtype=int)
+        # クラス数×クラス数の混同行列を計算
+        n_classes = y_true.shape[1]
+        class_confusion_matrix = np.zeros((n_classes, n_classes))
         
         # 各サンプルについて、予測クラスと真のクラスの組み合わせをカウント
         for true_labels, pred_labels in zip(y_true, y_pred):
@@ -191,7 +192,7 @@ class ClassificationMetricsCalculator:
         
         # 各クラスの精度指標を計算
         class_metrics = []
-        for class_idx in range(self.num_classes):
+        for class_idx in range(n_classes):
             cm = per_class_confusion_matrices[class_idx]
             tp, fp = cm[1, 1], cm[0, 1]
             fn, tn = cm[1, 0], cm[0, 0]
@@ -265,7 +266,12 @@ class ClassificationMetricsCalculator:
         y_pred = np.array(y_pred)
 
         # クラス数×クラス数の混同行列を計算
-        class_confusion_matrix = np.zeros((self.num_classes, self.num_classes), dtype=int)
+        # modeに応じてクラス数を設定
+        if self.mode == "multitask":
+            n_classes = 6  # 主クラスの数
+        elif self.mode == "single_label":
+            n_classes = 2
+        class_confusion_matrix = np.zeros((n_classes, n_classes), dtype=int)
         
         # 混同行列を作成
         for t, p in zip(y_true, y_pred):
@@ -275,7 +281,7 @@ class ClassificationMetricsCalculator:
         per_class_confusion_matrices = []
         class_metrics = []
         
-        for class_idx in range(self.num_classes):
+        for class_idx in range(n_classes):
             tp = class_confusion_matrix[class_idx, class_idx]
             fp = np.sum(class_confusion_matrix[:, class_idx]) - tp
             fn = np.sum(class_confusion_matrix[class_idx, :]) - tp
@@ -326,7 +332,12 @@ class ClassificationMetricsCalculator:
         y_pred = np.array(y_pred)
 
         # クラス数×クラス数の混同行列を計算
-        class_confusion_matrix = np.zeros((self.num_classes, self.num_classes), dtype=int)
+        # modeに応じてクラス数を設定
+        if self.mode == "multitask":
+            n_classes = 6  # 主クラスの数
+        elif self.mode == "single_label":
+            n_classes = 2
+        class_confusion_matrix = np.zeros((n_classes, n_classes), dtype=int)
         
         # 混同行列を作成
         for t, p in zip(y_true, y_pred):
@@ -336,7 +347,7 @@ class ClassificationMetricsCalculator:
         per_class_confusion_matrices = []
         class_metrics = []
         
-        for class_idx in range(self.num_classes):
+        for class_idx in range(n_classes):
             tp = class_confusion_matrix[class_idx, class_idx]
             fp = np.sum(class_confusion_matrix[:, class_idx]) - tp
             fn = np.sum(class_confusion_matrix[class_idx, :]) - tp
@@ -359,8 +370,8 @@ class ClassificationMetricsCalculator:
         # クラス数×クラス数の混同行列を保存
         cm_df = pd.DataFrame(
             class_confusion_matrix,
-            index=[f'True_{i}' for i in range(self.num_classes)],
-            columns=[f'Pred_{i}' for i in range(self.num_classes)]
+            index=[f'True_{i}' for i in range(n_classes)],
+            columns=[f'Pred_{i}' for i in range(n_classes)]
         )
         cm_df.to_csv(save_dir / 'confusion_matrix.csv')
         

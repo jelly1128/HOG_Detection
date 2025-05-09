@@ -1,7 +1,5 @@
 import csv
 from pathlib import Path
-import numpy as np
-from labeling.label_converter import HardMultiLabelResult, SingleLabelResult
 
 def save_metrics_to_csv(video_metrics, overall_metrics, video_file_path, overall_file_path):
     """

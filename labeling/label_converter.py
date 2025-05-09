@@ -1,12 +1,12 @@
 from dataclasses import dataclass
-from engine.inference import InferenceResult
+from labeling.result_types import InferenceResult
 import csv
 from pathlib import Path
 
 @dataclass
 class HardMultiLabelResult:
     """
-    マルチラベルの結果をマルチラベルとシングルラベルに変換した結果を格納するクラス。
+    マルチラベルの結果を格納するクラス。
 
     Attributes:
         image_paths: 画像パスのリスト
@@ -17,20 +17,6 @@ class HardMultiLabelResult:
     multi_labels: list[list[int]]
     ground_truth_labels: list[list[int]]
     
-@dataclass
-class SingleLabelResult:
-    """
-    シングルラベルの結果を格納するクラス。
-    
-    Attributes:
-        image_paths: 画像パスのリスト
-        single_labels: シングルラベルの予測ラベルのリスト
-        ground_truth_labels: シングルラベルの正解ラベルのリスト
-    """
-    image_paths: list[str]
-    single_labels: list[int]
-    ground_truth_labels: list[int]
-
 
 class MultiToSingleLabelConverter:
     def __init__(self, inference_results_dict: dict[str, InferenceResult]):
@@ -48,7 +34,7 @@ class MultiToSingleLabelConverter:
             dict[str, HardMultiLabelResult]: しきい値を超えるラベルのリストを含む辞書。
         """
         hard_multi_labels_results = {}
-        # フォルダごとにマルチラベルをマルチラベルに変換
+        # フォルダごとにマルチソフトラベルをマルチラベルに変換
         for video_name, inference_result in self.inference_results_dict.items():
             hard_multi_label_result = HardMultiLabelResult(image_paths=[], multi_labels=[], ground_truth_labels=[])
             

@@ -1,5 +1,5 @@
 from torch.utils.data import Dataset, DataLoader
-from .datasets import BaseMultiLabelDataset
+from .datasets import BaseMultiLabelDataset, HOGDetectionBinaryDataset
 from .transforms import get_train_transforms, get_test_transforms
 
 class DataLoaderFactory:
@@ -85,4 +85,49 @@ class DataLoaderFactory:
                 self.num_classes
             )
             test_dataloaders[test_data_dir] = self.create_dataloader(test_dataset, batch_size=1, shuffle=False)
+        return test_dataloaders
+
+    def create_hog_detection_dataloaders(self, train_data_dirs: list, val_data_dirs: list) -> tuple[DataLoader, DataLoader]:
+        """
+        HOG Detection用（0~13→0, 14→1バイナリ分類）の訓練・検証データローダーを作成
+
+        Args:
+            train_data_dirs (list): 訓練データのディレクトリリスト
+            val_data_dirs (list): 検証データのディレクトリリスト
+
+        Returns:
+            tuple: (train_loader, val_loader)
+        """
+        train_dataset = HOGDetectionBinaryDataset(
+            self.dataset_root,
+            train_data_dirs,
+            get_train_transforms(),
+        )
+        train_loader = self.create_dataloader(train_dataset, self.batch_size, shuffle=True)
+        val_dataset = HOGDetectionBinaryDataset(
+            self.dataset_root,
+            val_data_dirs,
+            get_test_transforms(),
+        )
+        val_loader = self.create_dataloader(val_dataset, self.batch_size, shuffle=False)
+        return train_loader, val_loader
+    
+    def create_hog_detection_test_dataloaders(self, eval_data_dirs: list) -> dict[str, DataLoader]:
+        """
+        HOG Detection用（0~13→0, 14→1バイナリ分類）の評価用データローダーを作成
+
+        Args:
+            eval_data_dirs (list): 評価データのディレクトリリスト
+
+        Returns:
+            dict: {データディレクトリ名: DataLoader}
+        """
+        test_dataloaders = {}
+        for eval_data_dir in eval_data_dirs:
+            eval_dataset = HOGDetectionBinaryDataset(
+                self.dataset_root,
+                [eval_data_dir],
+                get_test_transforms(),
+            )
+            test_dataloaders[eval_data_dir] = self.create_dataloader(eval_dataset, batch_size=1, shuffle=False)
         return test_dataloaders
