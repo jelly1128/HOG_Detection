@@ -9,6 +9,7 @@ import torch.optim as optim
 from config.config_loader import load_train_config
 from data.data_splitter import CrossValidationSplitter
 from data.dataloader import DataLoaderFactory
+from data.dataset_visualizer import plot_dataset_samples, show_dataset_stats, plot_dataset_samples_singlelabel, show_dataset_stats_singlelabel
 from utils.torch_utils import get_device_and_num_gpus, set_seed
 from utils.logger import setup_logging
 from utils.training_monitor import TrainingMonitor
@@ -29,22 +30,39 @@ def train_val(config: dict, train_data_dirs: list, val_data_dirs: list, save_dir
         num_classes=config.training.num_classes,
         num_gpus=num_gpus
     )
-    train_dataloader, val_dataloader = dataloader_factory.create_multi_label_dataloaders(train_data_dirs, val_data_dirs)
+
+    model_type = getattr(config.training, 'model_type', 'multitask')
+
+    if model_type == 'single_label':
+        # シングルラベル用
+        train_dataloader, val_dataloader = dataloader_factory.create_hog_detection_dataloaders(train_data_dirs, val_data_dirs)
+        # 可視化
+        # plot_dataset_samples_singlelabel(save_dir, train_dataloader)
+        show_dataset_stats_singlelabel(train_dataloader)
+        # show_dataset_stats_singlelabel(val_dataloader)
+        criterion = nn.CrossEntropyLoss()
+        is_multilabel = False
+    else:
+        # マルチラベル用
+        train_dataloader, val_dataloader = dataloader_factory.create_multi_label_dataloaders(train_data_dirs, val_data_dirs)
+        # 可視化
+        plot_dataset_samples(save_dir, train_dataloader)
+        show_dataset_stats(train_dataloader)
+
+        criterion = nn.BCEWithLogitsLoss()
+        is_multilabel = True
 
     # モデルのセットアップ
     model = setup_model(config, device, num_gpus, mode='train')
-
-    # 学習パラメータ
     optimizer = optim.Adam(model.parameters(), lr=float(config.training.learning_rate))
-    criterion = nn.BCEWithLogitsLoss()
 
     # 学習の経過を保存
     loss_history = {'train': [], 'val': []}
     monitor = TrainingMonitor(save_dir)
 
     # 学習・検証エンジン
-    trainer = Trainer(model, optimizer, criterion, device)
-    validator = Validator(model, criterion, device)
+    trainer = Trainer(model, optimizer, criterion, device, is_multilabel=is_multilabel)
+    validator = Validator(model, criterion, device, is_multilabel=is_multilabel)
 
     # 学習ループ
     for epoch in range(config.training.max_epochs):

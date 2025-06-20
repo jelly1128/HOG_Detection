@@ -1,16 +1,17 @@
 test:
   img_size: 224
   num_classes: 2
-  model_type: 'multitask'
+  model_architecture: 'resnet50'
+  model_type: 'single_label'
 
 paths:
   dataset_root: '/home/tanaka/demo_data'
-  save_dir: '2class_resnet18_multitask_hog_test'
+  save_dir: '2class_resnet50_single_label_hog_test'
   model_paths:
-    - '2class_resnet18_multitask_hog_train/fold_0/best_model.pth'
-    - '2class_resnet18_multitask_hog_train/fold_1/best_model.pth'
-    - '2class_resnet18_multitask_hog_train/fold_1/best_model.pth'
-    - '2class_resnet18_multitask_hog_train/fold_2/best_model.pth'
+    - '2class_resnet50_single_label_hog_train/fold_0/best_model.pth'
+    - '2class_resnet50_single_label_hog_train/fold_1/best_model.pth'
+    - '2class_resnet50_single_label_hog_train/fold_1/best_model.pth'
+    - '2class_resnet50_single_label_hog_train/fold_2/best_model.pth'
 
 splits:
   split1:

@@ -364,7 +364,7 @@ def analyze_class14_fp_fn_confusion(hard_multi_label_result, save_dir=None, vide
 
 
 def main():
-    save_dir_path = Path("15class_epoch15_hog_3group_cm_results")
+    save_dir_path = Path("15class_resnet50_r_s_s_multitask_test_hog")
     save_dir_path.mkdir(parents=True, exist_ok=True)
     # 解析器の初期化
     
@@ -373,7 +373,7 @@ def main():
     result_loader = ResultLoader()
     
     # 全体のディレクトリパス
-    dir_path = Path("/home/tanaka/HOG_Detection/15class_resnet18_multitask_test_epoch15")
+    dir_path = Path("15class_resnet50_r_s_s_multitask_test")
 
     # 全体の結果を保存する辞書
     overall_results = {}
@@ -398,43 +398,31 @@ def main():
                 # 可視化
                 save_fold_dir_path = save_dir_path / f'fold_{i}'
                 save_fold_dir_path.mkdir(parents=True, exist_ok=True)
-                # visualizer = HOGDetectionVisualizer(save_dir_path=save_fold_dir_path, num_classes=15)
-                # visualizer.visualize(video_name, hard_multi_label_result, with_ground_truth=True)
+                visualizer = HOGDetectionVisualizer(save_dir_path=save_fold_dir_path, num_classes=15)
+                visualizer.visualize(video_name, hard_multi_label_result, with_ground_truth=True)
                 # # 統計情報を表示・保存
                 # show_dataset_stats(hard_multi_label_result, save_dir_path / video_name)
 
                 # # クラス14の誤分類解析
-                analyze_class14_fp_fn_confusion(hard_multi_label_result, save_dir=save_dir_path / video_name, video_name=video_name)
+                # analyze_class14_fp_fn_confusion(hard_multi_label_result, save_dir=save_dir_path / video_name, video_name=video_name)
 
                 fold_results[video_name] = hard_multi_label_result
                 overall_results[video_name] = hard_multi_label_result
 
         video_metrics = calculator.calculate_multi_label_metrics_per_video(fold_results)
         overall_metrics = calculator.calculate_multi_label_overall_metrics(fold_results)
-    #     ## 各動画フォルダにマルチラベルのメトリクスを保存
-    #     save_video_metrics_to_csv(video_metrics, save_dir_path / f'fold_{i}', methods = 'hog_detection')
-    #     ## 全体のメトリクスを保存
-    #     save_overall_metrics_to_csv(overall_metrics, save_dir_path / f'fold_{i}', methods = 'hog_detection')
+        ## 各動画フォルダにマルチラベルのメトリクスを保存
+        save_video_metrics_to_csv(video_metrics, save_dir_path / f'fold_{i}', methods = 'hog_detection')
+        ## 全体のメトリクスを保存
+        save_overall_metrics_to_csv(overall_metrics, save_dir_path / f'fold_{i}', methods = 'hog_detection')
 
 
-    # # 全体のメトリクスを計算
-    # overall_video_metrics = calculator.calculate_multi_label_metrics_per_video(overall_results)
-    # overall_metrics = calculator.calculate_multi_label_overall_metrics(overall_results)
-    # ## 各動画フォルダにマルチラベルのメトリクスを保存 
-    # save_video_metrics_to_csv(overall_video_metrics, save_dir_path, methods = 'hog_detection')
-    # save_overall_metrics_to_csv(overall_metrics, save_dir_path / 'overall_results', methods = 'hog_detection')
-
-    # 全体でクラス14の誤分類解析
-    from types import SimpleNamespace
-    all_result = SimpleNamespace(
-        multi_labels=[mlr.multi_labels for mlr in overall_results.values()],
-        ground_truth_labels=[mlr.ground_truth_labels for mlr in overall_results.values()]
-    )
-    # flatten
-    import itertools
-    all_result.multi_labels = list(itertools.chain.from_iterable(all_result.multi_labels))
-    all_result.ground_truth_labels = list(itertools.chain.from_iterable(all_result.ground_truth_labels))
-    analyze_class14_fp_fn_confusion(all_result, save_dir=save_dir_path, video_name='overall')
+    # 全体のメトリクスを計算
+    overall_video_metrics = calculator.calculate_multi_label_metrics_per_video(overall_results)
+    overall_metrics = calculator.calculate_multi_label_overall_metrics(overall_results)
+    ## 各動画フォルダにマルチラベルのメトリクスを保存 
+    save_video_metrics_to_csv(overall_video_metrics, save_dir_path, methods = 'hog_detection')
+    save_overall_metrics_to_csv(overall_metrics, save_dir_path / 'overall_results', methods = 'hog_detection')
 
 if __name__ == "__main__":
     main()

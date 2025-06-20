@@ -3,19 +3,14 @@ from pathlib import Path
 import csv
 import svgwrite
 from engine.inference import InferenceResult
-from labeling.label_converter import HardMultiLabelResult, SingleLabelResult
+from labeling.result_types import HardMultiLabelResult, SingleLabelResult
 
 # 定数の定義
 LABEL_COLORS = {
-    0: (254, 195, 195),  # white
-    1: (204, 66, 38),    # lugol 
-    2: (57, 103, 177),   # indigo
-    3: (96, 165, 53),    # nbi
-    4: (86, 65, 72),     # outside
-    5: (159, 190, 183),  # bucket
-    14: (192, 192, 192), # biopsy forceps
+    0: (255, 255, 255),  # 
+    1: (0, 0, 0),        # biopsy forceps
 }
-DEFAULT_COLOR = (148, 148, 148)
+DEFAULT_COLOR = (255, 255, 255)
 
 class ResultsVisualizer:
     def __init__(self, save_dir_path: Path):
@@ -207,4 +202,44 @@ class ResultsVisualizer:
                         dwg.add(dwg.rect((x1, 0), (x2-x1, timeline_height), fill=color_hex))
 
             # SVGファイルを保存
+            dwg.save()
+
+    def save_single_label_ground_truth_visualization(self, results: dict[str, SingleLabelResult], save_path: Path = None, methods: str = 'single_label_gt'):
+        """
+        シングルラベル分類の正解ラベル（ground truth）を時系列で可視化
+        Args:
+            results (dict[str, SingleLabelResult]): シングルラベルの推論結果（ground_truth_labelsを利用）
+            save_path (Path, optional): 保存先のパス。指定しない場合はself.save_dirを使用。
+            methods (str, optional): メソッド名。デフォルトは'single_label_gt'。
+        """
+        for video_name, result in results.items():
+            ground_truth_labels = np.array(result.ground_truth_labels)
+            n_images = len(ground_truth_labels)
+
+            timeline_width = n_images
+            timeline_height = n_images // 10
+
+            # 保存パスの設定
+            if save_path is None:
+                video_results_dir = self.save_dir_path / video_name / methods
+                video_results_dir.mkdir(parents=True, exist_ok=True)
+                save_file = video_results_dir / f'{methods}_{video_name}.svg'
+            else:
+                save_path = save_path / video_name
+                save_path.mkdir(parents=True, exist_ok=True)
+                save_file = save_path / f'{methods}_{video_name}.svg'
+
+            # SVGドキュメントの作成
+            import svgwrite
+            dwg = svgwrite.Drawing(str(save_file), size=(timeline_width, timeline_height))
+            dwg.add(dwg.rect((0, 0), (timeline_width, timeline_height), fill='white'))
+
+            for i in range(n_images):
+                label = ground_truth_labels[i]
+                x1 = i * (timeline_width // n_images)
+                x2 = (i + 1) * (timeline_width // n_images)
+                color = LABEL_COLORS.get(label, DEFAULT_COLOR)
+                color_hex = f'#{color[0]:02x}{color[1]:02x}{color[2]:02x}'
+                dwg.add(dwg.rect((x1, 0), (x2-x1, timeline_height), fill=color_hex))
+
             dwg.save()
